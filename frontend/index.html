@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Farmácia — Clientes</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: system-ui, sans-serif;
+      background: #f4f6f8;
+      color: #1a1a2e;
+      min-height: 100vh;
+      padding: 24px 16px;
+    }
+
+    h1 {
+      text-align: center;
+      margin-bottom: 24px;
+      font-size: 1.6rem;
+      color: #2d6a4f;
+    }
+
+    .container { max-width: 900px; margin: 0 auto; }
+
+    /* Formulário */
+    .card {
+      background: #fff;
+      border-radius: 10px;
+      box-shadow: 0 2px 8px rgba(0,0,0,.08);
+      padding: 24px;
+      margin-bottom: 24px;
+    }
+
+    .card h2 { font-size: 1rem; margin-bottom: 16px; color: #2d6a4f; }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .form-grid .full { grid-column: 1 / -1; }
+
+    label { display: block; font-size: .8rem; font-weight: 600; margin-bottom: 4px; }
+
+    input {
+      width: 100%;
+      border: 1px solid #cdd5df;
+      border-radius: 6px;
+      padding: 8px 10px;
+      font-size: .9rem;
+      transition: border-color .2s;
+    }
+
+    input:focus { outline: none; border-color: #2d6a4f; }
+
+    .btn-row { display: flex; gap: 10px; margin-top: 16px; }
+
+    button {
+      padding: 9px 20px;
+      border: none;
+      border-radius: 6px;
+      font-size: .9rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity .2s;
+    }
+
+    button:hover { opacity: .85; }
+
+    .btn-salvar  { background: #2d6a4f; color: #fff; }
+    .btn-limpar  { background: #e2e8f0; color: #333; }
+    .btn-editar  { background: #3b82f6; color: #fff; padding: 5px 12px; font-size: .8rem; }
+    .btn-deletar { background: #ef4444; color: #fff; padding: 5px 12px; font-size: .8rem; }
+
+    /* Feedback */
+    #msg {
+      border-radius: 6px;
+      padding: 10px 14px;
+      font-size: .88rem;
+      margin-bottom: 16px;
+      display: none;
+    }
+
+    #msg.ok    { background: #d1fae5; color: #065f46; display: block; }
+    #msg.erro  { background: #fee2e2; color: #991b1b; display: block; }
+
+    /* Tabela */
+    table { width: 100%; border-collapse: collapse; font-size: .88rem; }
+
+    thead tr { background: #2d6a4f; color: #fff; }
+    thead th { padding: 10px 12px; text-align: left; font-weight: 600; }
+
+    tbody tr { border-bottom: 1px solid #e5e7eb; }
+    tbody tr:hover { background: #f0fdf4; }
+    tbody td { padding: 9px 12px; }
+
+    .tag-id {
+      display: inline-block;
+      background: #e0f2fe;
+      color: #0369a1;
+      border-radius: 4px;
+      padding: 1px 7px;
+      font-weight: 700;
+      font-size: .8rem;
+    }
+
+    .empty { text-align: center; padding: 30px; color: #6b7280; font-size: .9rem; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>💊 Farmácia — Gestão de Clientes</h1>
+
+    <!-- Mensagem de feedback -->
+    <div id="msg"></div>
+
+    <!-- Formulário -->
+    <div class="card">
+      <h2 id="form-titulo">Novo Cliente</h2>
+      <input type="hidden" id="cliente-id" />
+
+      <div class="form-grid">
+        <div class="full">
+          <label for="nome">Nome *</label>
+          <input id="nome" type="text" placeholder="Nome completo" maxlength="150" />
+        </div>
+        <div>
+          <label for="cpf">CPF *</label>
+          <input id="cpf" type="text" placeholder="000.000.000-00" maxlength="14" />
+        </div>
+        <div>
+          <label for="telefone">Telefone</label>
+          <input id="telefone" type="text" placeholder="(11) 99999-9999" maxlength="20" />
+        </div>
+        <div class="full">
+          <label for="email">E-mail</label>
+          <input id="email" type="email" placeholder="email@exemplo.com" maxlength="100" />
+        </div>
+      </div>
+
+      <div class="btn-row">
+        <button class="btn-salvar" onclick="salvar()">Salvar</button>
+        <button class="btn-limpar" onclick="limparFormulario()">Limpar</button>
+      </div>
+    </div>
+
+    <!-- Lista -->
+    <div class="card">
+      <h2>Clientes Cadastrados</h2>
+      <div id="tabela-wrapper">
+        <p class="empty">Carregando...</p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const API = 'http://localhost:8080/clientes';
+
+    // ── Utilitários ───────────────────────────────────────────────────────────
+
+    function mostrarMsg(texto, tipo = 'ok') {
+      const el = document.getElementById('msg');
+      el.textContent = texto;
+      el.className = tipo;
+      setTimeout(() => { el.className = ''; el.textContent = ''; }, 4000);
+    }
+
+    function limparFormulario() {
+      document.getElementById('cliente-id').value = '';
+      document.getElementById('nome').value = '';
+      document.getElementById('cpf').value = '';
+      document.getElementById('telefone').value = '';
+      document.getElementById('email').value = '';
+      document.getElementById('form-titulo').textContent = 'Novo Cliente';
+    }
+
+    function lerFormulario() {
+      return {
+        nome:     document.getElementById('nome').value.trim(),
+        cpf:      document.getElementById('cpf').value.trim(),
+        telefone: document.getElementById('telefone').value.trim(),
+        email:    document.getElementById('email').value.trim(),
+      };
+    }
+
+    // ── CRUD ──────────────────────────────────────────────────────────────────
+
+    async function listar() {
+      try {
+        const res = await fetch(API);
+        const clientes = await res.json();
+        renderTabela(clientes);
+      } catch {
+        document.getElementById('tabela-wrapper').innerHTML =
+          '<p class="empty">Não foi possível conectar na API. Verifique se o backend está rodando.</p>';
+      }
+    }
+
+    async function salvar() {
+      const dados = lerFormulario();
+      const id = document.getElementById('cliente-id').value;
+
+      if (!dados.nome || !dados.cpf) {
+        mostrarMsg('Nome e CPF são obrigatórios.', 'erro');
+        return;
+      }
+
+      const url    = id ? `${API}/${id}` : API;
+      const method = id ? 'PUT' : 'POST';
+
+      try {
+        const res = await fetch(url, {
+          method,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(dados),
+        });
+
+        const corpo = await res.json();
+
+        if (!res.ok) {
+          mostrarMsg(corpo.mensagem || 'Erro ao salvar cliente.', 'erro');
+          return;
+        }
+
+        mostrarMsg(id ? 'Cliente atualizado com sucesso!' : 'Cliente cadastrado com sucesso!');
+        limparFormulario();
+        listar();
+      } catch {
+        mostrarMsg('Erro de conexão com a API.', 'erro');
+      }
+    }
+
+    async function deletar(id, nome) {
+      if (!confirm(`Excluir o cliente "${nome}"?`)) return;
+
+      try {
+        const res = await fetch(`${API}/${id}`, { method: 'DELETE' });
+
+        if (res.status === 204) {
+          mostrarMsg('Cliente removido com sucesso!');
+          listar();
+        } else {
+          const corpo = await res.json();
+          mostrarMsg(corpo.mensagem || 'Erro ao remover cliente.', 'erro');
+        }
+      } catch {
+        mostrarMsg('Erro de conexão com a API.', 'erro');
+      }
+    }
+
+    function editar(cliente) {
+      document.getElementById('cliente-id').value   = cliente.id;
+      document.getElementById('nome').value         = cliente.nome     || '';
+      document.getElementById('cpf').value          = cliente.cpf      || '';
+      document.getElementById('telefone').value     = cliente.telefone || '';
+      document.getElementById('email').value        = cliente.email    || '';
+      document.getElementById('form-titulo').textContent = `Editando Cliente #${cliente.id}`;
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    // ── Renderização ──────────────────────────────────────────────────────────
+
+    function renderTabela(clientes) {
+      const wrapper = document.getElementById('tabela-wrapper');
+
+      if (!clientes.length) {
+        wrapper.innerHTML = '<p class="empty">Nenhum cliente cadastrado ainda.</p>';
+        return;
+      }
+
+      const linhas = clientes.map(c => `
+        <tr>
+          <td><span class="tag-id">${c.id}</span></td>
+          <td>${c.nome}</td>
+          <td>${c.cpf}</td>
+          <td>${c.telefone || '—'}</td>
+          <td>${c.email   || '—'}</td>
+          <td>
+            <button class="btn-editar"  onclick='editar(${JSON.stringify(c)})'>Editar</button>
+            <button class="btn-deletar" onclick="deletar(${c.id}, '${c.nome.replace(/'/g, "\\'")}')">Excluir</button>
+          </td>
+        </tr>
+      `).join('');
+
+      wrapper.innerHTML = `
+        <table>
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Nome</th>
+              <th>CPF</th>
+              <th>Telefone</th>
+              <th>E-mail</th>
+              <th>Ações</th>
+            </tr>
+          </thead>
+          <tbody>${linhas}</tbody>
+        </table>
+      `;
+    }
+
+    // Inicia listando os clientes
+    listar();
+  </script>
+</body>
+</html>
